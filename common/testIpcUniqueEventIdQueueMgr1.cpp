@@ -9,14 +9,15 @@ int main()
 	//boost::interprocess::named_mutex::remove("IpcUniqueEventIdQueueMgrMutex");
 	//boost::interprocess::named_condition::remove("IpcUniqueEventIdQueueMgrCondition");
 	//return 0;
-	IpcUniqueEventIdQueueMgr* mgr = IpcUniqueEventIdQueueMgr::createInstance(10000);
+	//IpcUniqueEventIdQueueMgr* mgr = IpcUniqueEventIdQueueMgr::createInstance(10000);
+	IpcUniqueEventIdQueueMgr* mgr = IpcUniqueEventIdQueueMgr::getInstance();
 	mgr->removeEventIdQueueUnit(0);
 	std::cout << std::endl << mgr->countQueueUnit() << std::endl;
-	bool ar = mgr->addEventIdQueueUnit(0);
+	bool ar = mgr->addEventIdQueueUnit(0, 8192);
 	std::cout << ar << "::" << mgr->countQueueUnit() << std::endl;
-	ar = mgr->addEventIdQueueUnit(0);
+	ar = mgr->addEventIdQueueUnit(0, 8192);
 	std::cout << ar << "::" << mgr->countQueueUnit() << std::endl;
-	ar = mgr->addEventIdQueueUnit(1);
+	ar = mgr->addEventIdQueueUnit(1, 8192);
 	for (int i = 0; i < 3; ++i) {
 		mgr->push(IpcUniqueEventIdQueueMgr::EQ_ALL, i);
 		mgr->push(1, i * 10);

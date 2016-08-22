@@ -10,38 +10,30 @@
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
-#include <stdexcept>
+#include "CommonTypeDefs.h"
 
 typedef boost::interprocess::managed_shared_memory::segment_manager                         SegmentManager;
 
 using namespace boost::multi_index;
+
 typedef multi_index_container<
-	unsigned int,
+	EventIdType,
 	indexed_by<
 		sequenced<>,           
-		hashed_unique<identity<unsigned int> >
+		hashed_unique<identity<EventIdType> >
 	>,
-	boost::interprocess::managed_shared_memory::allocator<unsigned int>::type
+	boost::interprocess::managed_shared_memory::allocator<EventIdType>::type
 > IpcUniqueEventIdQueue;
-
-struct timeout_error: public std::exception
-{
-	explicit timeout_error(unsigned int timeoutMiliSec);
-	const char * what () const throw ();
-	private:
-		std::string		reason_;
-};
-
-const unsigned int DefaultIpcUniqueEventQueueSize		= 16 * 1000;
 
 class IpcUniqueEventIdQueueMgr
 {
 	public:
 		enum {EQ_ALL = -1};
-		bool push(unsigned int queueUnitId, unsigned int eventId);
-		unsigned int pop(unsigned int queueUnitId, unsigned int timeoutMiliSec = 0);
+
+		bool push(unsigned int queueUnitId, EventIdType eventId);
+		EventIdType pop(unsigned int queueUnitId, unsigned int timeoutMiliSec = 0);
 		std::size_t	size(unsigned int queueUnitId);
-		bool addEventIdQueueUnit(unsigned int unitId);
+		bool addEventIdQueueUnit(unsigned int unitId, unsigned int queueItemLimit);
 		void removeEventIdQueueUnit(unsigned int unitId);
 		std::size_t	countQueueUnit();
 
@@ -50,19 +42,26 @@ class IpcUniqueEventIdQueueMgr
 		static void 						releaseInstance();
 
 	private:
+		bool init();
+		void releaseQueueUintMap();
+
+		IpcUniqueEventIdQueueMgr(){}
+		IpcUniqueEventIdQueueMgr& operator=(const IpcUniqueEventIdQueueMgr& rhs){}
+
 		class IpcUniqueEventIdQueueUnit
 		{
 			public:
-				IpcUniqueEventIdQueueUnit(unsigned int unitId, boost::interprocess::managed_shared_memory* segment);
+				IpcUniqueEventIdQueueUnit(unsigned int unitId, unsigned int eventIdQueueLimit, boost::interprocess::managed_shared_memory* segment);
 				~IpcUniqueEventIdQueueUnit();
-				bool push(unsigned int eventId);
-				unsigned int pop(unsigned int timeoutMiliSec = 0);
+				bool push(EventIdType eventId);
+				EventIdType pop(unsigned int timeoutMiliSec = 0);
 				std::size_t	size();
 
 			private:
 				IpcUniqueEventIdQueueUnit& operator=(const IpcUniqueEventIdQueueUnit& rhs){}
 
 				unsigned int 											unitId_;
+				unsigned int 											eventIdQueueLimit_;
 				boost::interprocess::offset_ptr<IpcUniqueEventIdQueue>	eventIdQueue_;
 				boost::interprocess::interprocess_mutex					eventIdQueueMutex_;
 				boost::interprocess::interprocess_condition				eventIdQueueCondition_;
@@ -79,12 +78,9 @@ class IpcUniqueEventIdQueueMgr
 			, boost::hash<KeyType>  , std::equal_to<KeyType>
 			, ShmemAllocator> EventIdQueueUnitMap;
 
-		bool init();
-		void releaseQueueUintMap();
-		IpcUniqueEventIdQueueMgr(){}
-		IpcUniqueEventIdQueueMgr& operator=(const IpcUniqueEventIdQueueMgr& rhs){}
 		static IpcUniqueEventIdQueueMgr*				instance_;
 		boost::interprocess::managed_shared_memory*		segment_;
 		static boost::interprocess::named_mutex			ipcUniqueEventIdQueueMgrMutex_;
 		EventIdQueueUnitMap*							eventIdQueueUnitMap_;
+		boost::interprocess::interprocess_mutex*		eventIdQueueUnitMapMutex_;
 };

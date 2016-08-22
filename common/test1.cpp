@@ -81,28 +81,38 @@ int main()
 	ie.printAll();
 	*/
 
-	//boost::interprocess::shared_memory_object::remove("IPC_EVENT_OBJ_MGR_SEGMENT");
-	IpcEventInfoObjMgr mgr;
-	mgr.init();
+	boost::interprocess::shared_memory_object::remove("IPC_EVENT_OBJ_MGR_SEGMENT");
+	IpcEventInfoObjMgr* mgr = IpcEventInfoObjMgr::getInstance();
 	IpcEventId testId, testId2, testId3, tetsId;
-	if (!mgr.registerEvent(testId, "ahahah")) {
-		mgr.getEventId("ahahah", testId);
+	if (!mgr->registerEvent(testId, "ahahah")) {
+		mgr->getEventId("ahahah", testId);
 	}
+	mgr->updateEvent(testId, 3.141592f);
 	cout << "oh:" <<  testId.get() << endl;
-	if (!mgr.registerEvent(testId2, "sss")) {
-		mgr.getEventId("sss", testId2);
+	if (!mgr->registerEvent(testId2, "sss")) {
+		mgr->getEventId("sss", testId2);
 	}
-	mgr.updateEvent(testId2, std::string("I'minShm"));
+	mgr->updateEvent(testId2, std::string("I'minShm"));
 	cout << "oh:" <<  testId2.get() << endl;
-	if (!mgr.registerEvent(testId3, "hhh")) {
-		mgr.getEventId("hhh", testId3);
+	if (!mgr->registerEvent(testId3, "hhh")) {
+		mgr->getEventId("hhh", testId3);
 	}
+	mgr->updateEvent(testId3, "OhOh!");
 	cout << "oh:" <<  testId3.get() << endl;
-	mgr.registerEvent(tetsId);
+	mgr->registerEvent(tetsId);
 	cout << "oh:" <<  tetsId << endl;
-	const IpcEventInfo* pinfo = mgr.getEvent("sss");
+	const IpcEventInfo* pinfo = mgr->getEvent("sss");
 	cout << testId2.get() << ", " << pinfo->getIpcEventSeq() << ", " << boost::any_cast<std::string>(pinfo->getUserDataAny()) << endl;
 	cout << endl << endl;
-	mgr.printAll();
+	mgr->updateEvent("sss", true);
+	char tmp[10] = {'a','t','c',0,'X',2, (char)0xff};
+	mgr->updateEvent(tetsId, tmp, sizeof tmp, IpcEventInfo::IEUT_BYTES);
+	IpcEventInfo i2;
+	mgr->getEvent(tetsId, i2);
+	mgr->printAll();
+
+	cout << endl << endl;
+	i2.printAll();
+
 	return 0;
 }

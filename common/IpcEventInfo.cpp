@@ -7,16 +7,6 @@ IpcEventInfo::IpcEventInfo():eventSeq_(0), dataSize_(0), dataType_(0)
 {
 }
 
-unsigned short 	IpcEventInfo::getIpcEventSeq() const 
-{ 
-	return eventSeq_;
-}
-
-void			IpcEventInfo::incIpcEventSeq() 
-{ 
-	eventSeq_++;
-}
-
 bool			IpcEventInfo::setUserData(const std::string& data)
 {
 	if (data.size() >= MaxEventInfoUserDataSize) {
@@ -145,10 +135,70 @@ boost::any		IpcEventInfo::getUserDataAny() const
 	return data;
 }
 
+std::string	IpcEventInfo::getUserDataAsStr() const
+{
+	std::string data;
+
+	if (IEUT_NONE == dataType_) {
+		data = "(NONE)";
+	}
+	else if (IEUT_BYTES == dataType_) {
+		char tmp[10] = {0,};
+		for (int i = 0; i < dataSize_; ++i) {
+			sprintf(tmp, "%02X ", (unsigned char)data_[i]);
+			data += tmp;
+		}
+	}
+	else if (IEUT_BOOL == dataType_) {
+		data = std::to_string(*((const bool*)data_));
+	}
+	else if (IEUT_CHAR == dataType_) {
+		data = std::to_string(*((const char*)data_));
+	}
+	else if (IEUT_UCHAR == dataType_) {
+		data = std::to_string(*((const unsigned char*)data_));
+	}
+	else if (IEUT_SHORT == dataType_) {
+		data = std::to_string(*((const short*)data_));
+	}
+	else if (IEUT_USHORT == dataType_) {
+		data = std::to_string(*((const unsigned short*)data_));
+	}
+	else if (IEUT_INT == dataType_) {
+		data = std::to_string(*((const int*)data_));
+	}
+	else if (IEUT_UINT == dataType_) {
+		data = std::to_string(*((const unsigned int*)data_));
+	}
+	else if (IEUT_FLOAT == dataType_) {
+		data = std::to_string(*((const float*)data_));
+	}
+	else if (IEUT_DOUBLE == dataType_) {
+		data = std::to_string(*((const double*)data_));
+	}
+	else if (IEUT_LONGLONG == dataType_) {
+		data = std::to_string(*((const long long*)data_));
+	}
+	else if (IEUT_ULONGLONG == dataType_) {
+		data = std::to_string(*((const unsigned long long*)data_));
+	}
+	else if (IEUT_FIXEDFLOAT == dataType_) {
+		data = std::to_string((double)*((const FixedFloat*)data_));
+	}
+	else if (IEUT_STRING == dataType_) {
+		data = string(data_);
+	}
+	else {
+		data = "(UNKNOWN)";
+	}
+
+	return data;
+}
+
 void			IpcEventInfo::printAll() const 
 {
 	cout << "Seq: " << getIpcEventSeq() << ",Type: " << getUserDataTypeStr() 
-		<< "(" << getUserDataType() << "),Size: " << getUserDataSize() << endl;
+		<< "(" << getUserDataType() << "),Size: " << getUserDataSize() << ", Data: " << getUserDataAsStr() << endl;
 }
 
 		

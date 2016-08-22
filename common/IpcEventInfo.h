@@ -2,34 +2,47 @@
 
 #include <string.h>
 #include <string>
+#include "CommonConstants.h"
+#include "CommonTypeDefs.h"
 #include "FixedFloat.h"
 #include "boost/any.hpp"
+#include "IpcEventId.h"
 
 class IpcEventInfoObjMgr;
 
-class IpcEventId
+class EventSeqInfo 
 {
 	public:
-		friend class IpcEventInfoObjMgr;
-		IpcEventId():id_(0){}
-		inline unsigned short get() const { return id_; }
-		operator unsigned short() const { return id_; }
-	private:
-		inline void set(unsigned short id){ id_ = id; }
-		unsigned short 	id_;
+		EventSeqInfo():seq_(0){}
+		unsigned short 	getSeq() const { return seq_; }
+		void			incSeq(short unit = 1) { seq_ += unit; }
+		void			setSeq(unsigned short seq) { seq_ = seq; }
+
+	protected:
+		unsigned short 	seq_;
 };
 
-const int MaxEventInfoUserDataSize	= 11;
-
-class IpcEventInfo {
+class IpcEventInfo: public EventSeqInfo 
+{
 	public:
 		friend class IpcEventInfoObjMgr;
 		enum {IEUT_NONE, IEUT_BOOL, IEUT_CHAR, IEUT_UCHAR, IEUT_SHORT, IEUT_USHORT, IEUT_INT, IEUT_UINT, 
 			IEUT_FLOAT, IEUT_DOUBLE, IEUT_LONGLONG, IEUT_ULONGLONG, IEUT_BYTES, IEUT_STRING, IEUT_FIXEDFLOAT};
 
 		IpcEventInfo();
-		unsigned short 			getIpcEventSeq() const;
-		void					incIpcEventSeq();
+		inline unsigned short 	getIpcEventSeq() const { return getSeq(); } 
+		inline const char*		getUserData() const { return data_; }
+		boost::any				getUserDataAny() const;
+		std::string				getUserDataAsStr() const;
+		inline unsigned int		getUserDataSize() const { return dataSize_; }	
+		inline unsigned int		getUserDataType() const { return dataType_; }	
+		static const char* 		getUserDataTypeStr(unsigned int dataType);
+		const char* 			getUserDataTypeStr() const { return getUserDataTypeStr(dataType_); }
+
+		void					printAll() const;
+
+	protected:
+		inline void				incIpcEventSeq() { incSeq();}
 		bool					setUserData(const char* data, unsigned char dataSize, unsigned char dataType = IEUT_BYTES);
 		template<typename T>
 		bool					setUserData(const T& data) {
@@ -80,20 +93,11 @@ class IpcEventInfo {
 		}
 
 		bool					setUserData(const std::string& data);
-		inline const char*		getUserData() const { return data_; }
-		boost::any				getUserDataAny() const;
-		inline unsigned int		getUserDataSize() const { return dataSize_; }	
-		inline unsigned int		getUserDataType() const { return dataType_; }	
-		static const char* 		getUserDataTypeStr(unsigned int dataType);
-		const char* 			getUserDataTypeStr() const { return getUserDataTypeStr(dataType_); }
 
-		void					printAll() const;
-
-	private:
+	protected:
 		unsigned short 	eventSeq_;
 		unsigned char	dataSize_:4;
 		unsigned char	dataType_:4;
 		char			data_[MaxEventInfoUserDataSize];
 };
-
 

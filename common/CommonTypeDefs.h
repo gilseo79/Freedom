@@ -7,3 +7,5 @@ typedef long long 	_int64;
 typedef _int64				LONGLONG;
 typedef unsigned long long 	ULONGLONG;
 
+typedef unsigned short		EventIdType;
+

@@ -3,25 +3,17 @@
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include "CommonConstants.h"
+#include "CommonStructs.h"
 
 using namespace std;
 
-timeout_error::timeout_error(unsigned int timeoutMiliSec)
-{
-	reason_ = "timeout : " + to_string(timeoutMiliSec) + " msec";
-}
+IpcUniqueEventIdQueueMgr*			IpcUniqueEventIdQueueMgr::instance_ = nullptr;
+boost::interprocess::named_mutex 	IpcUniqueEventIdQueueMgr::ipcUniqueEventIdQueueMgrMutex_(boost::interprocess::open_or_create, "IpcUniqueEventIdQueueMgrMutex");
 
-const char * timeout_error::what () const throw ()
+bool IpcUniqueEventIdQueueMgr::push(unsigned int queueUnitId, EventIdType eventId) 
 {
-	return reason_.c_str();	
-}
-
-IpcUniqueEventIdQueueMgr*		IpcUniqueEventIdQueueMgr::instance_ = nullptr;
-boost::interprocess::named_mutex IpcUniqueEventIdQueueMgr::ipcUniqueEventIdQueueMgrMutex_(boost::interprocess::open_or_create, "IpcUniqueEventIdQueueMgrMutex");
-
-bool IpcUniqueEventIdQueueMgr::push(unsigned int queueUnitId, unsigned int eventId) 
-{
-	boost::interprocess::scoped_lock<boost::interprocess::named_mutex> sl(ipcUniqueEventIdQueueMgrMutex_);
+	boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(*eventIdQueueUnitMapMutex_);
 	if (queueUnitId == EQ_ALL) {
 		auto&& it = eventIdQueueUnitMap_->begin();
 		while (it != eventIdQueueUnitMap_->end()) {
@@ -42,12 +34,11 @@ bool IpcUniqueEventIdQueueMgr::push(unsigned int queueUnitId, unsigned int event
 	}
 }
 
-
-unsigned int IpcUniqueEventIdQueueMgr::pop(unsigned int queueUnitId, unsigned int timeoutMiliSec)
+EventIdType IpcUniqueEventIdQueueMgr::pop(unsigned int queueUnitId, unsigned int timeoutMiliSec)
 {
 	EventIdQueueUnitMap::iterator it;
 	{
-		boost::interprocess::scoped_lock<boost::interprocess::named_mutex> sl(ipcUniqueEventIdQueueMgrMutex_);
+		boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(*eventIdQueueUnitMapMutex_);
 		it = eventIdQueueUnitMap_->find(queueUnitId);
 		if (it == eventIdQueueUnitMap_->end()) {
 			throw invalid_argument("invalid argument - no existed queueUnitId: " + to_string(queueUnitId));
@@ -59,7 +50,7 @@ unsigned int IpcUniqueEventIdQueueMgr::pop(unsigned int queueUnitId, unsigned in
 
 size_t	IpcUniqueEventIdQueueMgr::size(unsigned int queueUnitId)
 {
-	boost::interprocess::scoped_lock<boost::interprocess::named_mutex> sl(ipcUniqueEventIdQueueMgrMutex_);
+	boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(*eventIdQueueUnitMapMutex_);
 	auto&& it = eventIdQueueUnitMap_->find(queueUnitId);
 	if (it == eventIdQueueUnitMap_->end()) {
 		throw invalid_argument("invalid argument - no existed queueUnitId: " + to_string(queueUnitId));
@@ -70,7 +61,7 @@ size_t	IpcUniqueEventIdQueueMgr::size(unsigned int queueUnitId)
 
 std::size_t	IpcUniqueEventIdQueueMgr::countQueueUnit()
 {
-	boost::interprocess::scoped_lock<boost::interprocess::named_mutex> sl(ipcUniqueEventIdQueueMgrMutex_);
+	boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(*eventIdQueueUnitMapMutex_);
 	return eventIdQueueUnitMap_->size();
 }
 
@@ -79,12 +70,14 @@ bool IpcUniqueEventIdQueueMgr::init()
 	eventIdQueueUnitMap_ = segment_->find_or_construct<EventIdQueueUnitMap>("EVENTID_QUEUE_UNIT_MAP") 
 		      ( 5, boost::hash<unsigned int>(), std::equal_to<unsigned int>()  
 				      , segment_->get_allocator<ValueType>());
+	eventIdQueueUnitMapMutex_ = segment_->find_or_construct<boost::interprocess::interprocess_mutex>("EVENTID_QUEUE_UNIT_MAP_MUTEX")();
+
 	return true;
 }
 
-bool IpcUniqueEventIdQueueMgr::addEventIdQueueUnit(unsigned int unitId) 
+bool IpcUniqueEventIdQueueMgr::addEventIdQueueUnit(unsigned int unitId, unsigned int queueItemLimit ) 
 {
-	boost::interprocess::scoped_lock<boost::interprocess::named_mutex> sl(ipcUniqueEventIdQueueMgrMutex_);
+	boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(*eventIdQueueUnitMapMutex_);
 	auto&& iter = eventIdQueueUnitMap_->find(unitId);
 	if (iter != eventIdQueueUnitMap_->end()) {
 		return false;
@@ -92,8 +85,9 @@ bool IpcUniqueEventIdQueueMgr::addEventIdQueueUnit(unsigned int unitId)
 
 	string shm_unit_id = "EVENTID_QUEUE_UNIT_INSTANCE_" + to_string(unitId);
 	IpcUniqueEventIdQueueUnit* queueUnit = segment_->find_or_construct<IpcUniqueEventIdQueueUnit>(shm_unit_id.c_str())
-		(unitId, segment_);
+		(unitId, queueItemLimit, segment_);
 	eventIdQueueUnitMap_->insert(make_pair(unitId, queueUnit));
+
 	return true;
 }
 
@@ -101,7 +95,7 @@ void IpcUniqueEventIdQueueMgr::removeEventIdQueueUnit(unsigned int unitId)
 {
 	bool removed = false;
 	{
-		boost::interprocess::scoped_lock<boost::interprocess::named_mutex> sl(ipcUniqueEventIdQueueMgrMutex_);
+		boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(*eventIdQueueUnitMapMutex_);
 		auto&& res = eventIdQueueUnitMap_->find(unitId);
 
 		if (res != eventIdQueueUnitMap_->end()) {
@@ -124,9 +118,9 @@ IpcUniqueEventIdQueueMgr* 	IpcUniqueEventIdQueueMgr::createInstance(unsigned int
 		instance->segment_ = new boost::interprocess::managed_shared_memory(boost::interprocess::open_or_create, "IPC_UNIQUE_EVENTID_QUEUE_MGR_SHARED_SEGMENT", 64 * maxQueueSize);
 
 		if (instance->init() == false) {
-			boost::interprocess::shared_memory_object::remove("IPC_UNIQUE_EVENTID_QUEUE_MGR_SHARED_SEGMENT");
 			delete instance->segment_;
 			delete instance;
+			boost::interprocess::shared_memory_object::remove("IPC_UNIQUE_EVENTID_QUEUE_MGR_SHARED_SEGMENT");
 
 			return nullptr;
 		}
@@ -139,6 +133,10 @@ IpcUniqueEventIdQueueMgr* 	IpcUniqueEventIdQueueMgr::createInstance(unsigned int
 
 IpcUniqueEventIdQueueMgr* 	IpcUniqueEventIdQueueMgr::getInstance()
 {
+	if (instance_ == nullptr) {
+		return createInstance(IpcUniqueEventIdQueueMaxSize);
+	}
+
 	return instance_;
 }
 
@@ -148,17 +146,17 @@ void 						IpcUniqueEventIdQueueMgr::releaseInstance()
 
 	if (instance_ != nullptr) {
 		instance_->releaseQueueUintMap();
-		boost::interprocess::shared_memory_object::remove("IPC_UNIQUE_EVENTID_QUEUE_MGR_SHARED_SEGMENT");
 		delete instance_;
 		instance_ = nullptr;
+		boost::interprocess::shared_memory_object::remove("IPC_UNIQUE_EVENTID_QUEUE_MGR_SHARED_SEGMENT");
 	}
-		
-	boost::interprocess::named_mutex::remove("IpcUniqueEventIdQueueMgrMutex");
 }
 
 void IpcUniqueEventIdQueueMgr::releaseQueueUintMap()
 {
 	if (eventIdQueueUnitMap_ != nullptr) {
+		boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(*eventIdQueueUnitMapMutex_);
+
 		auto&& it = eventIdQueueUnitMap_->begin();
 		while (it != eventIdQueueUnitMap_->end()) {
 			string shm_unit_id = "EVENTID_QUEUE_UNIT_INSTANCE_" + to_string(it->first);
@@ -169,26 +167,44 @@ void IpcUniqueEventIdQueueMgr::releaseQueueUintMap()
 
 		segment_->destroy_ptr(eventIdQueueUnitMap_);
 		eventIdQueueUnitMap_ = nullptr;
+
+		segment_->destroy_ptr(eventIdQueueUnitMapMutex_);
+		eventIdQueueUnitMapMutex_ = nullptr;
 	}
 }
 
-IpcUniqueEventIdQueueMgr::IpcUniqueEventIdQueueUnit::IpcUniqueEventIdQueueUnit(unsigned int unitId, boost::interprocess::managed_shared_memory* segment)
+IpcUniqueEventIdQueueMgr::IpcUniqueEventIdQueueUnit::IpcUniqueEventIdQueueUnit(unsigned int unitId, unsigned int eventIdQueueLimit, boost::interprocess::managed_shared_memory* segment)
 {
 	unitId_ = unitId;
+	eventIdQueueLimit_ = eventIdQueueLimit; 
 	string event_id_unit = "IPC_UNIQUE_EVENTID_QUEUE_" + to_string(unitId);
 	eventIdQueue_ = segment->find_or_construct<IpcUniqueEventIdQueue>(event_id_unit.c_str())
-		(IpcUniqueEventIdQueue::ctor_args_list(), segment->get_allocator<unsigned int>());
+		(IpcUniqueEventIdQueue::ctor_args_list(), segment->get_allocator<EventIdType>());
 }
 
-bool IpcUniqueEventIdQueueMgr::IpcUniqueEventIdQueueUnit::push(unsigned int eventId) 
+bool IpcUniqueEventIdQueueMgr::IpcUniqueEventIdQueueUnit::push(EventIdType eventId) 
 {
 	boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(eventIdQueueMutex_);
-	auto&& res = eventIdQueue_->get<1>().insert(eventId);
-	eventIdQueueCondition_.notify_one();
-	return res.second;
+	if (eventIdQueue_->size() < eventIdQueueLimit_) {
+		auto&& res = eventIdQueue_->get<1>().insert(eventId);
+		eventIdQueueCondition_.notify_one();
+		return res.second;
+	}
+	else {
+		auto&& res = eventIdQueue_->get<1>().find(eventId);
+		if (res != eventIdQueue_->get<1>().end()) {
+			return false;
+		}
+	
+		eventIdQueue_->pop_front();
+		eventIdQueue_->push_back(eventId);
+		eventIdQueueCondition_.notify_one();
+
+		return true;
+	}
 }
 
-unsigned int IpcUniqueEventIdQueueMgr::IpcUniqueEventIdQueueUnit::pop(unsigned int timeoutMiliSec)
+EventIdType IpcUniqueEventIdQueueMgr::IpcUniqueEventIdQueueUnit::pop(unsigned int timeoutMiliSec)
 {
 	boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> sl(eventIdQueueMutex_);
 	if (eventIdQueue_->get<0>().empty()) {
@@ -204,7 +220,7 @@ unsigned int IpcUniqueEventIdQueueMgr::IpcUniqueEventIdQueueUnit::pop(unsigned i
 		}
 	}
 
-	unsigned int ret = eventIdQueue_->front();
+	auto ret = eventIdQueue_->front();
 	eventIdQueue_->pop_front();
 
 	return ret;

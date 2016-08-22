@@ -1,23 +1,49 @@
 #include "IpcEventInfoObjMgr.h"
 #include <iostream>
+#include "CommonConstants.h"
 
 using namespace std;
 using namespace boost::interprocess;
 
-IpcEventInfoObjMgr::IpcEventInfoObjMgr(): curIpcEventInfoObjId_(nullptr) 
+
+boost::interprocess::named_mutex	IpcEventInfoObjMgr::instanceMutex_{open_or_create, "IPC_EVENT_INFO_OBJ_MGR_MUTEX"};
+IpcEventInfoObjMgr*					IpcEventInfoObjMgr::instance_ = nullptr;
+
+IpcEventInfoObjMgr* IpcEventInfoObjMgr::getInstance()
 {
+	if (instance_ == nullptr) {
+		instance_ = createInstance();
+	}
+
+	return instance_;
+}
+
+IpcEventInfoObjMgr* IpcEventInfoObjMgr::createInstance()
+{
+	scoped_lock<named_mutex> lg(instanceMutex_);
+	if (instance_ == nullptr) {
+		IpcEventInfoObjMgr* instance = new IpcEventInfoObjMgr;
+		if (instance->init()) {
+			instance_ = instance;
+		}
+		else {
+			delete instance;
+		}
+	}
+
+	return instance_;
 }
 
 bool IpcEventInfoObjMgr::init()
 {
-	segment_ = new managed_shared_memory(open_or_create, "IPC_EVENT_OBJ_MGR_SEGMENT", 4 * 1024 * 1024);
+	segment_ = new managed_shared_memory(open_or_create, "IPC_EVENT_OBJ_MGR_SEGMENT", IpcEventObjMgrSegmentSize);
 	ipcEventInfoObjMap_ = segment_->find_or_construct<IpcEventInfoObjMap>("IPC_EVENT_INFO_OBJ_MAP") 
-		      (4 * 1024, boost::hash<unsigned short>(), std::equal_to<unsigned short>()  
+		      (IpcEventObjMapBucketSize, boost::hash<EventIdType>(), std::equal_to<EventIdType>()  
 				      ,segment_->get_allocator<ValueType>());
 	eventIdAliasMap_ = segment_->find_or_construct<BidirectIdAliasMap>("IPC_EVENT_INFO_ALIAS_ID_MAP")
 		(BidirectIdAliasMap::ctor_args_list(), segment_->get_allocator<ValueType1>());
-	ipcEventInfoObjMapMutex_ = segment_->find_or_construct<interprocess_mutex>("IPC_EVENT_OBJ_MGR_MUTEX")();
-	curIpcEventInfoObjId_ = segment_->find_or_construct<unsigned short>("CUR_IPC_EVENT_INFO_OBJ_ID")(1);
+	ipcEventInfoObjMapMutex_ = segment_->find_or_construct<interprocess_mutex>("IPC_EVENT_OBJ_MAP_MUTEX")();
+	curIpcEventInfoObjId_ = segment_->find_or_construct<EventIdType>("CUR_IPC_EVENT_INFO_OBJ_ID")(1);
 	curIpcEventInfoObjIdMutex_ = segment_->find_or_construct<interprocess_mutex>("CUR_IPC_EVENT_INFO_OBJ_ID_MUTEX")();
 	ipcEventInfoMutex_ = segment_->find_or_construct<interprocess_mutex>("IPC_EVENT_INFO_MUTEX")();
 
@@ -52,21 +78,12 @@ bool IpcEventInfoObjMgr::registerEvent(IpcEventId& ipcEventId, const char* alias
 	return true;
 }
 
-unsigned short IpcEventInfoObjMgr::allocIpcEventInfoObjId() {
+EventIdType IpcEventInfoObjMgr::allocIpcEventInfoObjId() {
 	scoped_lock<interprocess_mutex> lg(*curIpcEventInfoObjIdMutex_);
 	return (*curIpcEventInfoObjId_)++;
 }
 
-const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const IpcEventId& ipcEventId) const
-{
-	if (ipcEventId.get() == 0) {
-		return nullptr;
-	}
-
-	return getEvent(ipcEventId.get());
-}
-
-const IpcEventInfo* IpcEventInfoObjMgr::getEvent(unsigned short ipcEventId) const
+const IpcEventInfo* IpcEventInfoObjMgr::getEvent(EventIdType ipcEventId) const
 {
 	scoped_lock<interprocess_mutex> lg(*ipcEventInfoObjMapMutex_);
 	auto&& res = ipcEventInfoObjMap_->find(ipcEventId);
@@ -75,6 +92,15 @@ const IpcEventInfo* IpcEventInfoObjMgr::getEvent(unsigned short ipcEventId) cons
 	}
 
 	return &(res->second);
+}
+
+const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const IpcEventId& ipcEventId) const
+{
+	if (ipcEventId == 0) {
+		return nullptr;
+	}
+
+	return getEvent(ipcEventId.get());
 }
 
 const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const std::string& ipcEventAlias) const
@@ -97,7 +123,30 @@ const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const std::string& ipcEventAlia
 	return &(res->second);
 }
 
-unsigned short 	IpcEventInfoObjMgr::getEventId(const std::string& ipcEventAlias) const
+bool 	IpcEventInfoObjMgr::getEvent(EventIdType ipcEventId, IpcEventInfo& ipcEventInfo) const
+{
+	const IpcEventInfo* info = getEvent(ipcEventId);
+	if (info == nullptr) {
+		return false;
+	}
+
+	scoped_lock<interprocess_mutex> lg(*ipcEventInfoMutex_);
+	ipcEventInfo = *info;
+	return true;
+}
+
+bool	IpcEventInfoObjMgr::getEvent(const IpcEventId& ipcEventId, IpcEventInfo& ipcEventInfo) const
+{
+	return getEvent(ipcEventId.get(), ipcEventInfo);
+}
+
+bool	IpcEventInfoObjMgr::getEvent(const std::string& ipcEventAlias, IpcEventInfo& ipcEventInfo) const
+{
+	EventIdType ipcEventId = getEventId(ipcEventAlias);
+	return getEvent(ipcEventId, ipcEventInfo);
+}
+
+EventIdType 	IpcEventInfoObjMgr::getEventId(const std::string& ipcEventAlias) const
 {
 	if (ipcEventAlias.empty()) {
 		return 0;
@@ -122,7 +171,7 @@ bool IpcEventInfoObjMgr::getEventId(const std::string& ipcEventAlias, IpcEventId
 	return true;
 }
 
-bool IpcEventInfoObjMgr::removeEvent(unsigned short ipcEventId)
+bool IpcEventInfoObjMgr::removeEvent(EventIdType ipcEventId)
 {
 	if (ipcEventId == 0) {
 		return false;
@@ -153,7 +202,7 @@ bool IpcEventInfoObjMgr::removeEvent(const std::string& ipcEventAlias)
 	return removeEvent(getEventId(ipcEventAlias));
 }
 
-bool IpcEventInfoObjMgr::updateEvent(unsigned short ipcEventId, const char* data, unsigned char dataSize, unsigned char dataType)
+bool IpcEventInfoObjMgr::updateEvent(EventIdType ipcEventId, const char* data, unsigned char dataSize, unsigned char dataType)
 {
 	if (ipcEventId == 0) {
 		return false;
@@ -166,23 +215,29 @@ bool IpcEventInfoObjMgr::updateEvent(unsigned short ipcEventId, const char* data
 	}
 
 	scoped_lock<interprocess_mutex> lg1(*ipcEventInfoMutex_);
-	if (data == nullptr && dataSize == 0 && dataType == IpcEventInfo::IEUT_NONE) {
-	}
-	else {
+
+	if (data != nullptr || dataSize != 0 || dataType != IpcEventInfo::IEUT_NONE) {
 		if (data != nullptr && dataSize != 0 && dataType != IpcEventInfo::IEUT_NONE) {
 			if (!res->second.setUserData(data, dataSize, dataType)) {
 				return false;
 			}
 		}
 		else {
-			return false;
+
+			if (data != nullptr && dataSize == 0 && dataType == IpcEventInfo::IEUT_NONE) {
+				if (!res->second.setUserData(std::string(data))) {
+					return false;
+				}
+			}
+			else {
+				return false;
+			}
 		}
 	}
 
 	res->second.incIpcEventSeq();
 	return true;
 }
-
 
 bool IpcEventInfoObjMgr::updateEvent(const IpcEventId& ipcEventId, const char* data, unsigned char dataSize, unsigned char dataType)
 {
