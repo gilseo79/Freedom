@@ -30,7 +30,9 @@ class IpcEventInfo: public EventSeqInfo
 			IEUT_FLOAT, IEUT_DOUBLE, IEUT_LONGLONG, IEUT_ULONGLONG, IEUT_BYTES, IEUT_STRING, IEUT_FIXEDFLOAT};
 
 		IpcEventInfo();
+		IpcEventInfo(unsigned char eventType);
 		inline unsigned short 	getIpcEventSeq() const { return getSeq(); } 
+		inline unsigned int 	getEventType() const { return eventType_; } 
 		inline const char*		getUserData() const { return data_; }
 		boost::any				getUserDataAny() const;
 		std::string				getUserDataAsStr() const;
@@ -93,9 +95,11 @@ class IpcEventInfo: public EventSeqInfo
 		}
 
 		bool					setUserData(const std::string& data);
+		inline void				setEventType(unsigned char eventType) { eventType_ = eventType; }
 
 	protected:
 		unsigned short 	eventSeq_;
+		unsigned char	eventType_;
 		unsigned char	dataSize_:4;
 		unsigned char	dataType_:4;
 		char			data_[MaxEventInfoUserDataSize];

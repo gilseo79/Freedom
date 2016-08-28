@@ -2,6 +2,7 @@
 #include <string>
 #include <stdexcept>
 #include <cmath>
+#include <functional>
 #include "CommonTypeDefs.h"
 
 const unsigned int MAX_DECIMAL_POINT = 9;

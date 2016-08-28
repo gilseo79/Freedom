@@ -12,6 +12,7 @@
 #include <boost/multi_index/member.hpp>
 #include "CommonTypeDefs.h"
 #include "IpcEventInfo.h"
+#include "IpcEventTYpe.h"
 
 using namespace boost::multi_index;
 
@@ -63,7 +64,7 @@ class IpcEventInfoObjMgr
 		> BidirectIdAliasMap;
 
 		// member functions
-		bool 				registerEvent(IpcEventId& ipcEventId, const char* alias = nullptr);
+		bool 				registerEvent(IpcEventId& ipcEventId, const char* alias = nullptr, unsigned char eventType = IET_DEFAULT);
 
 		const IpcEventInfo* getEvent(const IpcEventId& ipcEventId) const;
 		const IpcEventInfo* getEvent(EventIdType ipcEventId) const;
@@ -134,7 +135,7 @@ class IpcEventInfoObjMgr
 		static boost::interprocess::named_mutex				instanceMutex_;
 
 		IpcEventInfoObjMgr(){}
-		IpcEventInfoObjMgr& operator=(const IpcEventInfoObjMgr& rhs) {}
+		IpcEventInfoObjMgr& operator=(const IpcEventInfoObjMgr& rhs) { return *this; }
 
 		IpcEventInfoObjMap*									ipcEventInfoObjMap_;
 		mutable boost::interprocess::interprocess_mutex*	ipcEventInfoObjMapMutex_;

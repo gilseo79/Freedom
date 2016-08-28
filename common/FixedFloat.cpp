@@ -6,8 +6,8 @@ FixedFloat FixedFloat::invalid_ = FixedFloat("2147483648.999999999");
 
 void FixedFloat::set_value( double value )
 {
-	unsigned int integer_value = static_cast<unsigned int>(std::abs(value));
-	LONGLONG tmp_value = (std::abs(value) - integer_value) * MAX_DECIMAL_POINT_MOD_VALUE + integer_value * MAX_DECIMAL_POINT_MOD_VALUE;
+	unsigned int integer_value = static_cast<unsigned int>(std::fabs(value));
+	LONGLONG tmp_value = (std::fabs(value) - integer_value) * MAX_DECIMAL_POINT_MOD_VALUE + integer_value * MAX_DECIMAL_POINT_MOD_VALUE;
 	if (value < 0)
 		value_ = tmp_value * -1;
 	else
@@ -18,7 +18,7 @@ void	FixedFloat::set_value(char sign, unsigned int integer_value, unsigned int d
 {
 	LONGLONG tmp_value = integer_value * MAX_DECIMAL_POINT_MOD_VALUE;
 	tmp_value += decimal_value * pow(10, MAX_DECIMAL_POINT - decimal_point);	
-	if ((sign == '-'))
+	if (sign == '-')
 		value_ = tmp_value * -1;
 	else
 		value_ = tmp_value;
@@ -26,7 +26,7 @@ void	FixedFloat::set_value(char sign, unsigned int integer_value, unsigned int d
 
 void	FixedFloat::set_value(int value, unsigned char decimal_point)
 {
-	LONGLONG tmp_value = static_cast<unsigned int>(std::abs(value)) * MAX_DECIMAL_POINT_MOD_VALUE;
+	LONGLONG tmp_value = static_cast<unsigned int>(std::fabs(value)) * MAX_DECIMAL_POINT_MOD_VALUE;
 
 	if (decimal_point > 0) {
 		int divider = pow(10, (double)decimal_point);
@@ -191,12 +191,12 @@ FixedFloat FixedFloat::operator-( const FixedFloat& rhs ) const
 FixedFloat FixedFloat::operator*( const FixedFloat& rhs ) const
 {
 	LONGLONG ai = value_ / MAX_DECIMAL_POINT_MOD_VALUE;
-	LONGLONG ad = abs(value_) % MAX_DECIMAL_POINT_MOD_VALUE;
+	LONGLONG ad = ((LONGLONG)std::fabs(value_)) % MAX_DECIMAL_POINT_MOD_VALUE;
 	if (get_sign() == FP_MINUS)
 		ad *= -1;
 
 	LONGLONG bi = rhs.value_ / MAX_DECIMAL_POINT_MOD_VALUE;
-	LONGLONG bd = abs(rhs.value_) % MAX_DECIMAL_POINT_MOD_VALUE;
+	LONGLONG bd = ((LONGLONG)std::fabs(rhs.value_)) % MAX_DECIMAL_POINT_MOD_VALUE;
 	if (rhs.get_sign() == FP_MINUS)
 		bd *= -1;
 
@@ -235,12 +235,12 @@ FixedFloat FixedFloat::operator-(FixedFloat&& rhs ) const
 FixedFloat FixedFloat::operator*(FixedFloat&& rhs ) const
 {
 	LONGLONG ai = value_ / MAX_DECIMAL_POINT_MOD_VALUE;
-	LONGLONG ad = abs(value_) % MAX_DECIMAL_POINT_MOD_VALUE;
+	LONGLONG ad = ((LONGLONG)std::fabs(value_)) % MAX_DECIMAL_POINT_MOD_VALUE;
 	if (get_sign() == FP_MINUS)
 		ad *= -1;
 
 	LONGLONG bi = rhs.value_ / MAX_DECIMAL_POINT_MOD_VALUE;
-	LONGLONG bd = abs(rhs.value_) % MAX_DECIMAL_POINT_MOD_VALUE;
+	LONGLONG bd = ((LONGLONG)std::fabs(rhs.value_)) % MAX_DECIMAL_POINT_MOD_VALUE;
 	if (rhs.get_sign() == FP_MINUS)
 		bd *= -1;
 
@@ -412,7 +412,7 @@ const FixedFloat& FixedFloat::invalid()
 
 unsigned int FixedFloat::get_value_decimal_int( unsigned int decimal_point) const
 {
-	return (std::abs(value_) % MAX_DECIMAL_POINT_MOD_VALUE) / pow(10, MAX_DECIMAL_POINT - decimal_point);
+	return ((LONGLONG)(std::fabs(value_)) % MAX_DECIMAL_POINT_MOD_VALUE) / pow(10, MAX_DECIMAL_POINT - decimal_point);
 }
 
 double FixedFloat::get_value_decimal() const
@@ -432,8 +432,8 @@ std::string FixedFloat::to_string(unsigned short decimal_point) const
 	unsigned int tmp_val, div_val;
 	ULONGLONG mod_val;
 
-	integer_value = std::abs(value_) / MAX_DECIMAL_POINT_MOD_VALUE;
-	decimal_value = std::abs(value_) % MAX_DECIMAL_POINT_MOD_VALUE;
+	integer_value = ((LONGLONG)std::fabs(value_)) / MAX_DECIMAL_POINT_MOD_VALUE;
+	decimal_value = ((LONGLONG)std::fabs(value_)) % MAX_DECIMAL_POINT_MOD_VALUE;
 
 	if (decimal_point != 0) {
 		mod_val = 1000000000;

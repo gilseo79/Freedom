@@ -87,9 +87,9 @@ int main()
 	if (!mgr->registerEvent(testId, "ahahah")) {
 		mgr->getEventId("ahahah", testId);
 	}
-	mgr->updateEvent(testId, 3.141592f);
+	mgr->updateEvent(testId, FixedFloat(3141592.0)  / FixedFloat(10000.0));
 	cout << "oh:" <<  testId.get() << endl;
-	if (!mgr->registerEvent(testId2, "sss")) {
+	if (!mgr->registerEvent(testId2, "sss", IET_CUR_PRICE)) {
 		mgr->getEventId("sss", testId2);
 	}
 	mgr->updateEvent(testId2, std::string("I'minShm"));

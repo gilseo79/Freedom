@@ -3,7 +3,11 @@
 
 using namespace std;
 
-IpcEventInfo::IpcEventInfo():eventSeq_(0), dataSize_(0), dataType_(0)
+IpcEventInfo::IpcEventInfo():eventSeq_(0), eventType_(0), dataSize_(0), dataType_(0)
+{
+}
+
+IpcEventInfo::IpcEventInfo(unsigned char eventType):eventSeq_(0), eventType_(eventType), dataSize_(0), dataType_(0)
 {
 }
 
@@ -197,7 +201,7 @@ std::string	IpcEventInfo::getUserDataAsStr() const
 
 void			IpcEventInfo::printAll() const 
 {
-	cout << "Seq: " << getIpcEventSeq() << ",Type: " << getUserDataTypeStr() 
+	cout << "Seq: " << getIpcEventSeq() << ", Type: " << getEventType() << ",DataType: " << getUserDataTypeStr() 
 		<< "(" << getUserDataType() << "),Size: " << getUserDataSize() << ", Data: " << getUserDataAsStr() << endl;
 }
 

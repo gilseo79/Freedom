@@ -50,7 +50,7 @@ bool IpcEventInfoObjMgr::init()
 	return true;
 }
 
-bool IpcEventInfoObjMgr::registerEvent(IpcEventId& ipcEventId, const char* alias)
+bool IpcEventInfoObjMgr::registerEvent(IpcEventId& ipcEventId, const char* alias, unsigned char eventType)
 {
 	if (ipcEventId.get() != 0) {
 		cout << "Already existing IpcEventInfo Id: " << ipcEventId << endl;
@@ -71,7 +71,7 @@ bool IpcEventInfoObjMgr::registerEvent(IpcEventId& ipcEventId, const char* alias
 	}
 
 	kv1.first = allocIpcEventInfoObjId();
-	ipcEventInfoObjMap_->insert(make_pair(kv1.first, IpcEventInfo()));
+	ipcEventInfoObjMap_->insert(make_pair(kv1.first, IpcEventInfo(eventType)));
 	eventIdAliasMap_->insert(kv1);
 	ipcEventId.set(kv1.first);
 
