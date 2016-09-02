@@ -1,44 +1,51 @@
-#include "IpcIpcEventWatchInfo.h"
+#include "IpcEventWatchInfo.h"
+#include "IpcEventInfo.h"
+#include "IpcEventInfoObjMgr.h"
 
-IpcEventWatchInfo::IpcEventWatchInfo(EventIdType eventId, IpcEventInfoObjMgr& objMgr, EventIdType tarEventId):IpcEventInfo(eventId), tarIpcEventInfo_(nullptr){
-	if ((tarIpcEventInfo_ = objMgr.get(tarEventId)) != nullptr) {
-		tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
-		this->registerSelf(objMgr);
+IpcEventWatchInfo::IpcEventWatchInfo(IpcEventInfoObjMgr& objMgr, IpcEventId tarEventId)
+	:tarIpcEventInfo_(nullptr), tarPrevEventSeq_(0)
+{
+	if ((tarIpcEventInfo_ = const_cast<IpcEventInfo*>(objMgr.getEvent(tarEventId))) != nullptr) {
+		if (objMgr.registerEvent(ipcEventId_, "", IET_EVENT_WATCH_DEFAULT)) {
+			tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
+			tarIpcEventId_ = tarEventId;
+		}
 	}
 }
 
-IpcEventWatchInfo::IpcEventWatchInfo(EventIdType eventId, IpcEventInfoObjMgr& objMgr, const std::string& tarEventAlias):IpcEventInfo(eventId), tarIpcEventInfo_(nullptr){
-	if ((tarIpcEventInfo_ = objMgr.get(tarEventAlias)) != nullptr) {
-		tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
-		this->registerSelf(objMgr);
+IpcEventWatchInfo::IpcEventWatchInfo(IpcEventInfoObjMgr& objMgr, const std::string& tarEventAlias)
+	:tarIpcEventInfo_(nullptr), tarPrevEventSeq_(0)
+{
+	if ((tarIpcEventInfo_ = const_cast<IpcEventInfo*>(objMgr.getEvent(tarEventAlias, &tarIpcEventId_))) != nullptr) {
+		if (objMgr.registerEvent(ipcEventId_, "", IET_EVENT_WATCH_DEFAULT)) {
+			tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
+		}
 	}
 }
 
-IpcEventWatchInfo::IpcEventWatchInfo(const char* eventAlias, IpcEventInfoObjMgr& objMgr, EventIdType tarEventId): tarIpcEventInfo_(nullptr){
-	if ((tarIpcEventInfo_ = objMgr.get(tarEventId)) != nullptr) {
-		tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
-		this->registerSelf(objMgr, eventAlias);
+IpcEventWatchInfo::IpcEventWatchInfo(const std::string& eventAlias, IpcEventInfoObjMgr& objMgr, IpcEventId tarEventId)
+	:tarIpcEventInfo_(nullptr), tarPrevEventSeq_(0)
+{
+	if ((tarIpcEventInfo_ = const_cast<IpcEventInfo*>(objMgr.getEvent(tarEventId))) != nullptr) {
+		if (objMgr.registerEvent(ipcEventId_, eventAlias, IET_EVENT_WATCH_DEFAULT)) {
+			tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
+			tarIpcEventId_ = tarEventId;
+		}
 	}
 }
 
-IpcEventWatchInfo::IpcEventWatchInfo(const char* eventAlias, IpcEventInfoObjMgr& objMgr, const std::string& tarEventAlias): tarIpcEventInfo_(nullptr){
-	if ((tarIpcEventInfo_ = objMgr.get(tarEventAlias)) != nullptr) {
-		tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
-		this->registerSelf(objMgr, eventAlias);
+IpcEventWatchInfo::IpcEventWatchInfo(const std::string& eventAlias, IpcEventInfoObjMgr& objMgr, const std::string& tarEventAlias)
+	:tarIpcEventInfo_(nullptr), tarPrevEventSeq_(0)
+{
+	if ((tarIpcEventInfo_ = const_cast<IpcEventInfo*>(objMgr.getEvent(tarEventAlias, &tarIpcEventId_))) != nullptr) {
+		if (objMgr.registerEvent(ipcEventId_, eventAlias, IET_EVENT_WATCH_DEFAULT)) {
+			tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
+		}
 	}
 }
 
-EventIdType 	IpcEventWatchInfo::getTarEventId() const { 
-	if (tarIpcEventInfo_ == nullptr) {
-		return 0;
-	}
-
-	return tarIpcEventInfo_->getEventId(); 
-}
-
-IpcEventInfo*		IpcEventWatchInfo::getTarIpcEventInfo() { return tarIpcEventInfo_; }
-EventIdType 	IpcEventWatchInfo::getTarPrevEventSeq() const { return tarPrevEventSeq_; }
-bool			IpcEventWatchInfo::isDiffEventSeq() const { 
+bool IpcEventWatchInfo::isDiffEventSeq() const 
+{ 
 	if (tarIpcEventInfo_ == nullptr) {
 		return false;
 	}
@@ -46,17 +53,20 @@ bool			IpcEventWatchInfo::isDiffEventSeq() const {
 	return tarIpcEventInfo_->getEventSeq() != tarPrevEventSeq_;
 }
 
-void			IpcEventWatchInfo::updatePrevEventSeq() {
+void IpcEventWatchInfo::updatePrevEventSeq() 
+{
 	if (tarIpcEventInfo_ != nullptr) {
 		tarPrevEventSeq_ = tarIpcEventInfo_->getEventSeq();
 	}
 }
 
-bool			IpcEventWatchInfo::isBound() const {
-	if (ipcEventId_ == 0 || tarIpcEventId_ == 0) {
+bool IpcEventWatchInfo::isBound() const 
+{
+	if (ipcEventId_.get() == IpcEventId::INVALID_ID || 
+			tarIpcEventId_.get() == IpcEventId::INVALID_ID) {
 		return false;
 	}
 
-	return ipcEventId_ != tarIpcEventId_;
+	return ipcEventId_.get() != tarIpcEventId_.get();
 }
 

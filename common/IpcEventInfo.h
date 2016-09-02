@@ -7,20 +7,9 @@
 #include "FixedFloat.h"
 #include "boost/any.hpp"
 #include "IpcEventId.h"
+#include "EventSeqInfo.h"
 
 class IpcEventInfoObjMgr;
-
-class EventSeqInfo 
-{
-	public:
-		EventSeqInfo():seq_(0){}
-		unsigned short 	getSeq() const { return seq_; }
-		void			incSeq(short unit = 1) { seq_ += unit; }
-		void			setSeq(unsigned short seq) { seq_ = seq; }
-
-	protected:
-		unsigned short 	seq_;
-};
 
 class IpcEventInfo: public EventSeqInfo 
 {
@@ -31,7 +20,7 @@ class IpcEventInfo: public EventSeqInfo
 
 		IpcEventInfo();
 		IpcEventInfo(unsigned char eventType);
-		inline unsigned short 	getIpcEventSeq() const { return getSeq(); } 
+		inline EventSeqType 	getEventSeq() const { return getSeq(); } 
 		inline unsigned int 	getEventType() const { return eventType_; } 
 		inline const char*		getUserData() const { return data_; }
 		boost::any				getUserDataAny() const;
@@ -44,7 +33,7 @@ class IpcEventInfo: public EventSeqInfo
 		void					printAll() const;
 
 	protected:
-		inline void				incIpcEventSeq() { incSeq();}
+		inline void				incEventSeq() { incSeq();}
 		bool					setUserData(const char* data, unsigned char dataSize, unsigned char dataType = IEUT_BYTES);
 		template<typename T>
 		bool					setUserData(const T& data) {
@@ -98,7 +87,6 @@ class IpcEventInfo: public EventSeqInfo
 		inline void				setEventType(unsigned char eventType) { eventType_ = eventType; }
 
 	protected:
-		unsigned short 	eventSeq_;
 		unsigned char	eventType_;
 		unsigned char	dataSize_:4;
 		unsigned char	dataType_:4;

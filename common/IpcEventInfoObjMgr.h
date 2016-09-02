@@ -64,11 +64,11 @@ class IpcEventInfoObjMgr
 		> BidirectIdAliasMap;
 
 		// member functions
-		bool 				registerEvent(IpcEventId& ipcEventId, const char* alias = nullptr, unsigned char eventType = IET_DEFAULT);
+		bool 				registerEvent(IpcEventId& ipcEventId, const std::string alias = "", unsigned char eventType = IET_DEFAULT);
 
 		const IpcEventInfo* getEvent(const IpcEventId& ipcEventId) const;
 		const IpcEventInfo* getEvent(EventIdType ipcEventId) const;
-		const IpcEventInfo* getEvent(const std::string& ipcEventAlias) const;
+		const IpcEventInfo* getEvent(const std::string& ipcEventAlias, IpcEventId* ipcEventId = nullptr) const;
 
 		bool 				getEvent(EventIdType ipcEventId, IpcEventInfo& ipcEventInfo) const;
 		bool			 	getEvent(const IpcEventId& ipcEventId, IpcEventInfo& ipcEventInfo) const;
@@ -91,7 +91,7 @@ class IpcEventInfoObjMgr
 
 			boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lg1(*ipcEventInfoMutex_);
 			if (res->second.setUserData(data)) {
-				res->second.incIpcEventSeq();
+				res->second.incEventSeq();
 				return true;
 			}
 

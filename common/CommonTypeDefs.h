@@ -8,4 +8,4 @@ typedef _int64				LONGLONG;
 typedef unsigned long long 	ULONGLONG;
 
 typedef unsigned short		EventIdType;
-
+typedef unsigned short		EventSeqType;

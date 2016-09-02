@@ -3,9 +3,12 @@
 #include "CommonConstants.h"
 #include "CommonTypeDefs.h"
 #include "IpcEventId.h"
-#include "IpcEventInfo.h"
+#include <string>
 
-class IpcEventWatchInfo: public EventSeqInfo 
+class IpcEventInfo;
+class IpcEventInfoObjMgr;
+
+class IpcEventWatchInfo
 {
 	public:
 		IpcEventWatchInfo(IpcEventInfoObjMgr& objMgr, IpcEventId tarEventId);
@@ -13,16 +16,19 @@ class IpcEventWatchInfo: public EventSeqInfo
 		IpcEventWatchInfo(const std::string& eventAlias, IpcEventInfoObjMgr& objMgr, IpcEventId tarEventId);
 		IpcEventWatchInfo(const std::string& eventAlias, IpcEventInfoObjMgr& objMgr, const std::string& tarEventAlias);
 
-		IpcEventId 			getEventId() const;
-		IpcEventId 			getTarEventId() const;
-		unsigned short		getTarPrevEventSeq() const;
-		bool				isDiffEventSeq() const;
-		void				updatePrevEventSeq();
-		bool				isBound() const;
+		inline IpcEventId 		getEventId() const { return ipcEventId_; }
+		inline IpcEventId 		getTarEventId() const { return tarIpcEventId_; }
+		inline IpcEventInfo*	getTarIpcEventInfo() { return tarIpcEventInfo_; }
+		inline EventSeqType		getTarPrevEventSeq() const { return tarPrevEventSeq_; }
+		bool					isDiffEventSeq() const;
+		void					updatePrevEventSeq();
+		bool					isBound() const;
 
 	private:
-		IpcEventId						ipcEventId_;
+		IpcEventInfo*					tarIpcEventInfo_;
+		EventSeqType					tarPrevEventSeq_;
 		IpcEventId						tarIpcEventId_;
+		IpcEventId						ipcEventId_;
 };
 
 

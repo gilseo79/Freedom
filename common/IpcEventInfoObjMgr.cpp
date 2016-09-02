@@ -50,7 +50,7 @@ bool IpcEventInfoObjMgr::init()
 	return true;
 }
 
-bool IpcEventInfoObjMgr::registerEvent(IpcEventId& ipcEventId, const char* alias, unsigned char eventType)
+bool IpcEventInfoObjMgr::registerEvent(IpcEventId& ipcEventId, const std::string alias, unsigned char eventType)
 {
 	if (ipcEventId.get() != 0) {
 		cout << "Already existing IpcEventInfo Id: " << ipcEventId << endl;
@@ -59,8 +59,8 @@ bool IpcEventInfoObjMgr::registerEvent(IpcEventId& ipcEventId, const char* alias
 
 	scoped_lock<interprocess_mutex> lg(*ipcEventInfoObjMapMutex_);
 	CharAllocator charAllocator = segment_->get_allocator<char>();
-	ValueType1 kv1(0, alias == nullptr?"":alias, charAllocator);
-	if (alias != nullptr) {
+	ValueType1 kv1(0, alias.empty()?"":alias.c_str(), charAllocator);
+	if (alias.empty() == false) {
 		auto& aliasMap = eventIdAliasMap_->get<1>();
 		auto&& it = aliasMap.find(kv1.second);
 
@@ -103,7 +103,7 @@ const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const IpcEventId& ipcEventId) c
 	return getEvent(ipcEventId.get());
 }
 
-const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const std::string& ipcEventAlias) const
+const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const std::string& ipcEventAlias, IpcEventId* ipcEventId ) const
 {
 	if (ipcEventAlias.empty()) {
 		return nullptr;
@@ -118,6 +118,10 @@ const IpcEventInfo* IpcEventInfoObjMgr::getEvent(const std::string& ipcEventAlia
 	auto&& res = ipcEventInfoObjMap_->find(aliasIt->first);
 	if (res == ipcEventInfoObjMap_->end()) {
 		return nullptr;
+	}
+
+	if (ipcEventId != nullptr) {
+		*ipcEventId = IpcEventId(res->first);
 	}
 
 	return &(res->second);
@@ -235,7 +239,7 @@ bool IpcEventInfoObjMgr::updateEvent(EventIdType ipcEventId, const char* data, u
 		}
 	}
 
-	res->second.incIpcEventSeq();
+	res->second.incEventSeq();
 	return true;
 }
 

@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include "IpcEventInfo.h"
 #include "IpcEventInfoObjMgr.h"
+#include "IpcEventWatchInfo.h"
 
 using namespace std;
 
@@ -67,7 +68,7 @@ int main()
 
 
 	cout << boost::any_cast<bool>(z) << endl;
-	ie.incIpcEventSeq();
+	ie.incEventSeq();
 	ie.printAll();
 	unsigned short p = 22;
 	ie.setUserData(p);
@@ -92,6 +93,7 @@ int main()
 	if (!mgr->registerEvent(testId2, "sss", IET_CUR_PRICE)) {
 		mgr->getEventId("sss", testId2);
 	}
+	IpcEventWatchInfo wi(*mgr, "sss");
 	mgr->updateEvent(testId2, std::string("I'minShm"));
 	cout << "oh:" <<  testId2.get() << endl;
 	if (!mgr->registerEvent(testId3, "hhh")) {
@@ -102,7 +104,7 @@ int main()
 	mgr->registerEvent(tetsId);
 	cout << "oh:" <<  tetsId << endl;
 	const IpcEventInfo* pinfo = mgr->getEvent("sss");
-	cout << testId2.get() << ", " << pinfo->getIpcEventSeq() << ", " << boost::any_cast<std::string>(pinfo->getUserDataAny()) << endl;
+	cout << testId2.get() << ", " << pinfo->getEventSeq() << ", " << boost::any_cast<std::string>(pinfo->getUserDataAny()) << endl;
 	cout << endl << endl;
 	mgr->updateEvent("sss", true);
 	char tmp[10] = {'a','t','c',0,'X',2, (char)0xff};
@@ -113,6 +115,12 @@ int main()
 
 	cout << endl << endl;
 	i2.printAll();
+
+	if (wi.isDiffEventSeq()) {
+		cout << endl << wi.isDiffEventSeq() << "," << wi.getEventId() << endl << endl;
+		wi.updatePrevEventSeq();
+		cout << endl << wi.isDiffEventSeq() << "," << wi.getEventId() << endl << endl;
+	}
 
 	return 0;
 }

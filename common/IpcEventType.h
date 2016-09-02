@@ -26,6 +26,9 @@ enum IpcEventType {
 	IET_CUR_VIX,
 	IET_HIGH_VIX,
 	IET_LOW_VIX,
+
+	IET_EVENT_WATCH_DEFAULT = 128
 };
 
-const char* getIpcEventTypePrefix(unsigned int ipcEventType);
+extern const char* getIpcEventTypePrefix(unsigned int ipcEventType);
+extern const char* getIpcEventTypeStr(unsigned int ipcEventType);
