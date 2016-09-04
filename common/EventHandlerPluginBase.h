@@ -20,7 +20,7 @@ class EventHandlerPluginBase
 		friend class EventHandlerPluginInfo;
 	
 		EventHandlerPluginBase() { setPluginInfo(); }
-		virtual void setPluginInfo() = 0;
+		virtual void setPluginInfo(){};
 
 		virtual	bool setup() = 0;
 		virtual	bool preprocess() = 0;

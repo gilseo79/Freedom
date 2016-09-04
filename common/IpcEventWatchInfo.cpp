@@ -1,6 +1,7 @@
 #include "IpcEventWatchInfo.h"
 #include "IpcEventInfo.h"
 #include "IpcEventInfoObjMgr.h"
+#include <iostream>
 
 IpcEventWatchInfo::IpcEventWatchInfo(IpcEventInfoObjMgr& objMgr, IpcEventId tarEventId)
 	:tarIpcEventInfo_(nullptr), tarPrevEventSeq_(0)
@@ -49,7 +50,7 @@ bool IpcEventWatchInfo::isDiffEventSeq() const
 	if (tarIpcEventInfo_ == nullptr) {
 		return false;
 	}
-
+	//std::cout << "IpcSeq: " <<tarIpcEventInfo_->getEventSeq() << ", " << tarPrevEventSeq_ << std::endl;
 	return tarIpcEventInfo_->getEventSeq() != tarPrevEventSeq_;
 }
 

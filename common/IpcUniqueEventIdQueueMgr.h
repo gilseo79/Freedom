@@ -46,7 +46,7 @@ class IpcUniqueEventIdQueueMgr
 		void releaseQueueUintMap();
 
 		IpcUniqueEventIdQueueMgr(){}
-		IpcUniqueEventIdQueueMgr& operator=(const IpcUniqueEventIdQueueMgr& rhs){}
+		IpcUniqueEventIdQueueMgr& operator=(const IpcUniqueEventIdQueueMgr& rhs){ return *this; }
 
 		class IpcUniqueEventIdQueueUnit
 		{
@@ -58,7 +58,7 @@ class IpcUniqueEventIdQueueMgr
 				std::size_t	size();
 
 			private:
-				IpcUniqueEventIdQueueUnit& operator=(const IpcUniqueEventIdQueueUnit& rhs){}
+				IpcUniqueEventIdQueueUnit& operator=(const IpcUniqueEventIdQueueUnit& rhs){ return *this; }
 
 				unsigned int 											unitId_;
 				unsigned int 											eventIdQueueLimit_;

@@ -4,6 +4,16 @@
 #include "IpcEventInfo.h"
 #include "IpcEventInfoObjMgr.h"
 #include "IpcEventWatchInfo.h"
+#include "EventHappenPredicator.h"
+#include <string>
+#include <vector>
+#include "EventHandlerPluginTest.h"
+#include "EventHandler.h"
+#include "EventHandlerMgr.h"
+#include "IpcUniqueEventIdQueueMgr.h"
+#include <chrono>
+#include <thread>
+
 
 using namespace std;
 
@@ -83,25 +93,48 @@ int main()
 	*/
 
 	boost::interprocess::shared_memory_object::remove("IPC_EVENT_OBJ_MGR_SEGMENT");
+	boost::interprocess::shared_memory_object::remove("IPC_UNIQUE_EVENTID_QUEUE_MGR_SHARED_SEGMENT");
+
+	IpcUniqueEventIdQueueMgr* queueMgr = IpcUniqueEventIdQueueMgr::createInstance(100);
+	queueMgr->addEventIdQueueUnit(0, 100);
 	IpcEventInfoObjMgr* mgr = IpcEventInfoObjMgr::getInstance();
+	EventHandlerMgr* eventHandlerMgr = new EventHandlerMgr(queueMgr, mgr, 0);
 	IpcEventId testId, testId2, testId3, tetsId;
 	if (!mgr->registerEvent(testId, "ahahah")) {
 		mgr->getEventId("ahahah", testId);
 	}
-	mgr->updateEvent(testId, FixedFloat(3141592.0)  / FixedFloat(10000.0));
-	cout << "oh:" <<  testId.get() << endl;
+
 	if (!mgr->registerEvent(testId2, "sss", IET_CUR_PRICE)) {
 		mgr->getEventId("sss", testId2);
 	}
-	IpcEventWatchInfo wi(*mgr, "sss");
-	mgr->updateEvent(testId2, std::string("I'minShm"));
-	cout << "oh:" <<  testId2.get() << endl;
+
 	if (!mgr->registerEvent(testId3, "hhh")) {
 		mgr->getEventId("hhh", testId3);
 	}
+	mgr->registerEvent(tetsId);
+
+	vector<string> alias_list = {"ahahah", "sss", "hhh"};
+
+	EventHappenPredicator* ep = new EventHappenPredicator(*mgr, alias_list);
+	EventHandlerPluginTest* testHandler = new EventHandlerPluginTest;
+	EventHandler* eh = new EventHandler(ep, testHandler);
+	eventHandlerMgr->addEventHandler(eh);
+	size_t registed_cnt = 3;
+	mgr->updateEvent(testId, FixedFloat(3141592.0)  / FixedFloat(10000.0));
+	cout << "oh:" <<  testId.get() << endl;
+
+	queueMgr->push(IpcUniqueEventIdQueueMgr::EQ_ALL, testId.get());
+	this_thread::sleep_for(chrono::milliseconds(100));
+
+	mgr->updateEvent(testId2, std::string("I'minShm"));
+	cout << "oh:" <<  testId2.get() << endl;
+	queueMgr->push(IpcUniqueEventIdQueueMgr::EQ_ALL, testId2.get());
+	this_thread::sleep_for(chrono::milliseconds(100));
+
 	mgr->updateEvent(testId3, "OhOh!");
 	cout << "oh:" <<  testId3.get() << endl;
-	mgr->registerEvent(tetsId);
+	queueMgr->push(IpcUniqueEventIdQueueMgr::EQ_ALL, testId3.get());
+	this_thread::sleep_for(chrono::milliseconds(100));
 	cout << "oh:" <<  tetsId << endl;
 	const IpcEventInfo* pinfo = mgr->getEvent("sss");
 	cout << testId2.get() << ", " << pinfo->getEventSeq() << ", " << boost::any_cast<std::string>(pinfo->getUserDataAny()) << endl;
@@ -109,18 +142,16 @@ int main()
 	mgr->updateEvent("sss", true);
 	char tmp[10] = {'a','t','c',0,'X',2, (char)0xff};
 	mgr->updateEvent(tetsId, tmp, sizeof tmp, IpcEventInfo::IEUT_BYTES);
+
+	this_thread::sleep_for(chrono::seconds(3));
 	IpcEventInfo i2;
 	mgr->getEvent(tetsId, i2);
 	mgr->printAll();
 
 	cout << endl << endl;
+
 	i2.printAll();
 
-	if (wi.isDiffEventSeq()) {
-		cout << endl << wi.isDiffEventSeq() << "," << wi.getEventId() << endl << endl;
-		wi.updatePrevEventSeq();
-		cout << endl << wi.isDiffEventSeq() << "," << wi.getEventId() << endl << endl;
-	}
-
+	mgr->printAll();
 	return 0;
 }
